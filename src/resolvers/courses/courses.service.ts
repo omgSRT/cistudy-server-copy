@@ -12,6 +12,7 @@ import {
     CategoryMySqlEntity,
     CertificateMySqlEntity,
     CompleteResourceMySqlEntity,
+    CourseConfigurationMySqlEntity,
     CourseMySqlEntity,
     CourseRating,
     CourseReviewMySqlEntity,
@@ -30,7 +31,7 @@ import {
 } from "@database"
 import { Inject, Injectable, NotFoundException } from "@nestjs/common"
 import { InjectRepository } from "@nestjs/typeorm"
-import { DataSource, DeepPartial, Like, Repository } from "typeorm"
+import { DataSource, DeepPartial, Like, Not, Repository } from "typeorm"
 import {
     FindManyCourseReportsInput,
     FindManyCourseReviewsInput,
@@ -81,6 +82,8 @@ export class CoursesService {
     private readonly enrolledInfoMySqlRepository: Repository<EnrolledInfoMySqlEntity>,
     @InjectRepository(QuizAttemptMySqlEntity)
     private readonly quizAttemptMySqlRepository: Repository<QuizAttemptMySqlEntity>,
+    @InjectRepository(CourseConfigurationMySqlEntity)
+    private readonly courseConfigurationMySqlRepository: Repository<CourseConfigurationMySqlEntity>,
     @InjectRepository(QuizQuestionMySqlEntity)
     private readonly quizQuestionMySqlRepository: Repository<QuizQuestionMySqlEntity>,
     @InjectRepository(ReportCourseMySqlEntity)
@@ -159,7 +162,7 @@ export class CoursesService {
                 },
                 courseReviews: {
                     account: true
-                }
+                },
             },
             order: {
                 courseTargets: {
@@ -308,6 +311,14 @@ export class CoursesService {
         course.numberOfResources = numberOfResources
         course.numberOfQuizzes = numberOfQuizzes
 
+        const courseConfigurations = await this.courseConfigurationMySqlRepository.find({
+            order: {
+                createdAt: "DESC"
+            }
+        })
+        if (courseConfigurations[0]) {
+            course.courseConfiguration = courseConfigurations[0]
+        }
         return course
     }
 
@@ -628,6 +639,16 @@ export class CoursesService {
         })
 
         course.students = enrolledInfos.map(({account}) => account)
+
+        const courseConfigurations = await this.courseConfigurationMySqlRepository.find({
+            order: {
+                createdAt: "DESC"
+            }
+        })
+        if (courseConfigurations[0]) {
+            course.courseConfiguration = courseConfigurations[0]
+        }
+        
         return course
     }
 
@@ -658,7 +679,7 @@ export class CoursesService {
                 courseTargets: true,
             },
             order: {
-                updatedAt: "DESC"
+                createdAt: "DESC"
             }
         })
 
@@ -1284,7 +1305,7 @@ export class CoursesService {
         const { options } = data
         const { skip, take } = options
 
-        const results = await this.reportCourseMySqlRepository.find({
+        const pendingReports = await this.reportCourseMySqlRepository.find({
             where: {
                 processStatus: ReportProcessStatus.Processing
             },
@@ -1294,12 +1315,31 @@ export class CoursesService {
                     creator: true
                 }
             },
-            skip,
-            take,
             order: {
                 createdAt: "DESC"
             }
         })
+
+        const exceptPendingReports = await this.reportCourseMySqlRepository.find({
+            where: {
+                processStatus: Not(ReportProcessStatus.Processing)
+            },
+            relations: {
+                reporterAccount: true,
+                reportedCourse: {
+                    creator: true
+                }
+            },
+            order: {
+                createdAt: "DESC"
+            }
+        })
+
+        const results = [...pendingReports, ...exceptPendingReports]
+
+        if(skip !== undefined && take !== undefined){
+            results.slice(skip, skip + take)
+        }
 
         const numberOfCourseReports = await this.reportCourseMySqlRepository.count()
 

@@ -6,6 +6,7 @@ import { AddToCartInput, CheckOutInput, DeleteFromCartInput } from "./cart.input
 import { AddToCartOutput, CheckOutOutput, DeleteFromCartOutput } from "./cart.output"
 import { NotificationType, OrderStatus, TransactionType } from "@common"
 import { appConfig } from "@config"
+import { ConfigurationService } from "@global"
 
 @Injectable()
 export class CartService {
@@ -25,7 +26,8 @@ export class CartService {
         @InjectRepository(NotificationMySqlEntity)
         private readonly notificationMySqlRepository: Repository<NotificationMySqlEntity>,
         @InjectRepository(TransactionMySqlEntity)
-        private readonly transactionMySqlEntity: Repository<TransactionMySqlEntity>
+        private readonly transactionMySqlEntity: Repository<TransactionMySqlEntity>,
+        private readonly configurationService: ConfigurationService
     ) { }
 
 
@@ -157,10 +159,12 @@ export class CartService {
         const notificationPromises : Array<Promise<void>> = []
 
         for (const [creatorId, courses] of Object.entries(earningsMap)) {
-            const totalEarnings = courses.reduce((accumulator, course) => {
-                return accumulator + (course.enableDiscount ? course.discountPrice : course.price)
-            }, 0)
-
+            let totalEarnings = 0
+            for (const course of courses) {
+                const { instructor } = await this.configurationService.getConfiguration(course.courseId)
+                totalEarnings += (course.enableDiscount ? course.discountPrice : course.price) * (instructor / 100)
+            }
+            
             const promise = async () => {
                 await this.notificationMySqlRepository.save({
                     receiverId: creatorId,

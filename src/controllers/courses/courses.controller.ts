@@ -58,6 +58,7 @@ import {
     UpdateQuizAttemptAnswersInputData,
     MarkAsCompleteResourceInputData,
     UpdateLessonProgressInputData,
+    AddCourseAPInputData,
 } from "./courses.input"
 
 import {
@@ -84,11 +85,26 @@ export class CoursesController {
     @ApiBearerAuth()
     @Post("create-course")
     @UseGuards(JwtAuthGuard, RolesGuard)
-    @Roles(SystemRoles.User, SystemRoles.Instructor)
+    @Roles(SystemRoles.User)
     @UseInterceptors(AuthInterceptor)
     async createCourse(@AccountId() accountId: string) {
         return await this.coursesService.createCourse({
             accountId,
+        })
+    }
+
+    @ApiBearerAuth()
+    @Post("add-course-api")
+    @UseGuards(JwtAuthGuard, RolesGuard)
+    @Roles(SystemRoles.User)
+    @UseInterceptors(AuthInterceptor)
+    async addCourseAPI(
+        @AccountId() accountId: string,
+        @Body() data : AddCourseAPInputData
+    ) {
+        return await this.coursesService.addCourseAPI({
+            accountId,
+            data
         })
     }
 
@@ -654,7 +670,6 @@ export class CoursesController {
     @ApiBearerAuth()
     @Patch("resolve-course-report")
     @UseGuards(JwtAuthGuard, RolesGuard)
-    @Roles(SystemRoles.User, SystemRoles.Moderator)
     @UseInterceptors(AuthInterceptor)
     async resolveAccountReport(
         @AccountId() accountId: string,

@@ -12,7 +12,7 @@ import {
     GetCourseStatisticInput
 } from "./profile.input"
 import { FindManyAccountOrdersOutputData, FindManyEnrolledCoursesOutputData, FindManyReceivedNotificationsOutputData, FindManySelfCreatedCoursesOutputData, FindManyTransactionsOutputData, GetCourseStatisticOutputData } from "./profile.output"
-import { OrderStatus, TransactionType } from "@common"
+import { CourseVerifyStatus, OrderStatus, TransactionStatus, TransactionType } from "@common"
 
 @Injectable()
 export class ProfileService {
@@ -94,6 +94,7 @@ export class ProfileService {
             skip,
             where: {
                 isDeleted: false,
+                verifyStatus: CourseVerifyStatus.Approved,
                 enrolledInfos: {
                     accountId,
                     enrolled: true
@@ -104,28 +105,27 @@ export class ProfileService {
             }
         })
     
-        const creatorIds = courses.map(course => course.creator.accountId)
+        //const creatorIds = courses.map(course => course.creator.accountId) ?? []
     
-        const numberOfFollowersResults = await this.followMySqlRepository
-            .createQueryBuilder("follow")
-            .select("follow.followedAccountId, COUNT(follow.followedAccountId) as count")
-            .where("follow.followedAccountId IN (:...creatorIds)", { creatorIds })
-            .groupBy("follow.followedAccountId")
-            .getRawMany()
+        // const numberOfFollowersResults = await this.followMySqlRepository
+        //     .createQueryBuilder("follow")
+        //     .select("follow.followedAccountId, COUNT(follow.followedAccountId) as count")
+        //     .where("follow.followedAccountId IN (:...creatorIds)", { creatorIds })
+        //     .groupBy("follow.followedAccountId")
+        //     .getRawMany()
     
-        const followerCountMap = numberOfFollowersResults.reduce((map, item) => {
-            map[item.followedAccountId] = parseInt(item.count, 10)
-            return map
-        }, {})
+        // const followerCountMap = numberOfFollowersResults?.reduce((map, item) => {
+        //     map[item.followedAccountId] = parseInt(item.count ?? 0, 10)
+        //     return map
+        // }, {})
     
 
-        const numberOfEnrolledCoursesResult = await this.courseMySqlRepository.createQueryBuilder()
-            .select("COUNT(*)", "count")
-            .innerJoin(CourseMySqlEntity, "course")
-            .innerJoin(EnrolledInfoMySqlEntity, "enrolledInfo", "course.courseId = enrolledInfo.courseId")
-            .where("enrolledInfo.accountId = :accountId", { accountId })
-            .andWhere("enrolledInfo.enrolled = :enrolled", { enrolled: true })
-            .getRawOne()
+        const numberOfEnrolledCoursesResult = await this.enrolledInfoMySqlRepository.count({
+            where:{
+                accountId,
+                enrolled: true
+            }
+        })
     
 
         const numberOfRewardedPosts = await this.postMySqlRepository.find({
@@ -141,13 +141,13 @@ export class ProfileService {
     
         return {
             results: courses.map(course => {
-                course.creator.numberOfFollowers = followerCountMap[course.creator.accountId] || 0
+                // course.creator.numberOfFollowers = followerCountMap[course.creator.accountId] || 0
                 course.numberOfRewardedPostsLeft = numberOfRewardedPostsLeft
     
                 return course
             }),
             metadata: {
-                count: numberOfEnrolledCoursesResult.count
+                count: numberOfEnrolledCoursesResult
             }
         }
     }
@@ -294,7 +294,7 @@ export class ProfileService {
     }
 
     async findOneCertificate(input: FindOneCertificateInput): Promise<CertificateMySqlEntity> {
-        const { data, accountId } = input
+        const { data } = input
         const { certificateId } = data
 
         const certificate = await this.certificateMySqlRepository.findOne({
@@ -324,7 +324,7 @@ export class ProfileService {
 
         const numberOfAccountFollowers = await this.followMySqlRepository.count({
             where:{
-                followedAccountId: accountId,
+                followedAccountId: certificate.accountId,
                 followed: true
             }
         })
@@ -502,7 +502,8 @@ export class ProfileService {
             commentPosts,
             markedPosts,
             createdPosts,
-            totalEarning: earnTransactions.reduce((sum, transaction) => { return sum + transaction.amountDepositedChange}, 0)
+            totalEarning: earnTransactions.reduce((sum, transaction) => { return transaction.status === TransactionStatus.Success ? sum + transaction.amountDepositedChange : sum }, 0),
+            pendingEarning: earnTransactions.reduce((sum, transaction) => { return transaction.status === TransactionStatus.Pending ? sum + transaction.amountDepositedChange : sum}, 0),
         }
     }
 }

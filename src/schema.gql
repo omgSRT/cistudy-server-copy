@@ -536,6 +536,16 @@ type NotificationEntity {
   course: CourseEntity
 }
 
+type CourseConfigurationEntity {
+  courseConfigurationId: ID
+  earn: Float
+  completed: Float
+  createdAt: DateTime!
+  courseId: ID
+  updatedAt: DateTime!
+  course: CourseEntity
+}
+
 type CourseEntity {
   courseId: ID!
   title: String
@@ -548,6 +558,7 @@ type CourseEntity {
   verifyStatus: String!
   creator: AccountEntity!
   isDeleted: Boolean!
+  reported: Boolean!
   receivedWalletAddress: String
   previewVideoId: ID
   includes: String
@@ -568,6 +579,7 @@ type CourseEntity {
   courseNotifications: [NotificationEntity!]
   transactionDetails: [TransactionDetailEntity!]
   transactions: [TransactionEntity!]
+  courseConfigurations: [CourseConfigurationEntity!]!
   numberOfEnrollments: Int
   enrolled: Boolean
   isReviewed: Boolean
@@ -587,6 +599,7 @@ type CourseEntity {
   completedContents: Int
   students: [AccountEntity!]
   isAddedToCart: Boolean
+  courseConfiguration: CourseConfigurationEntity
 }
 
 type CartCourseEntity {
@@ -731,11 +744,7 @@ type AccountEntity {
 
 type ConfigurationEntity {
   configurationId: ID
-  earn: Float
-  instructor: Float
-  completed: Float
   foundation: Float
-  appliedAt: DateTime!
   createdAt: DateTime!
   updatedAt: DateTime!
 }
@@ -935,17 +944,17 @@ type FindManyAccountReportsOutput {
   tokens: AuthTokens
 }
 
-type FindManyPendingCourseOutputMetadata {
+type FindManyPublishedCoursesOutputMetadata {
   count: Int
 }
 
-type FindManyPendingCourseOutputData {
+type FindManyPublishedCoursesOutputData {
   results: [CourseEntity!]!
-  metadata: FindManyPendingCourseOutputMetadata!
+  metadata: FindManyPublishedCoursesOutputMetadata!
 }
 
-type FindManyPendingCourseOutput {
-  data: FindManyPendingCourseOutputData!
+type FindManyPublishedCoursesOutput {
+  data: FindManyPublishedCoursesOutputData!
   tokens: AuthTokens
 }
 
@@ -1071,11 +1080,6 @@ type FindManyReceivedNotificationsOutput {
   tokens: AuthTokens
 }
 
-type FindOneCertificateOutput {
-  data: CertificateEntity!
-  tokens: AuthTokens
-}
-
 type FindManyAccountOrdersOutputMetadata {
   count: Int
 }
@@ -1093,6 +1097,7 @@ type FindManyAccountOrdersOutput {
 type GetCourseStatisticOutputData {
   numberOfRewardablePostsLeft: Int
   totalEarning: Float
+  pendingEarning: Float
   likePosts: [PostEntity!]
   commentPosts: [PostEntity!]
   markedPosts: [PostEntity!]
@@ -1182,7 +1187,7 @@ type Query {
   findManyAccounts(data: FindManyAccountsInputData!): FindManyAccountsOutput!
   findManyAccountReviews(data: FindManyAccountReviewsInputData!): FindManyAccountReviewsOutputData!
   findManyAccountReports(data: FindManyAccountReportsInputData!): FindManyAccountReportsOutput!
-  findManyPendingCourses(data: FindManyPendingCourseInputData!): FindManyPendingCourseOutput!
+  findManyPublishedCourses(data: FindManyPublishedCoursesInputData!): FindManyPublishedCoursesOutput!
   findManyPendingInstructors(data: FindManyPendingInstructorInputData!): FindManyPendingInstructorOutput!
   findManyAdminTransactions(data: FindManyAdminTransactionsInputData!): FindManyAdminTransactionsOutput!
   findManyNotifications(data: FindManyNotificationsInputData!): FindManyNotificationsOutput!
@@ -1193,7 +1198,7 @@ type Query {
   findManyEnrolledCourses(data: FindManyEnrolledCoursesInputData!): FindManyEnrolledCoursesOutput!
   findManyTransactions(data: FindManyTransactionsInputData!): FindManyTransactionsOutput!
   findManyReceivedNotifications(data: FindManyReceivedNotificationsInputData!): FindManyReceivedNotificationsOutput!
-  findOneCertificate(data: FindOneCertificateInputData!): FindOneCertificateOutput!
+  findOneCertificate(data: FindOneCertificateInputData!): CertificateEntity!
   findManyAccountOrders(data: FindManyAccountOrdersInputData!): FindManyAccountOrdersOutput!
   getCourseStatistic(data: GetCourseStatisticInputData!): GetCourseStatisticOutput!
   findOneCart: FindOneCartOutput!
@@ -1473,11 +1478,11 @@ input FindManyAccountReportsInputOptions {
   skip: Int
 }
 
-input FindManyPendingCourseInputData {
-  options: FindManyPendingCourseInputOptions
+input FindManyPublishedCoursesInputData {
+  options: FindManyPublishedCoursesInputOptions
 }
 
-input FindManyPendingCourseInputOptions {
+input FindManyPublishedCoursesInputOptions {
   take: Int
   skip: Int
 }

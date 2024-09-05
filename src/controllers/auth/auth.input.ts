@@ -6,8 +6,7 @@ export class SignInInputData {
   @IsEmail()
   @ApiProperty()
   	email: string
-    
-  @IsStrongPassword()
+
   @Length(6, 20)
   @ApiProperty()
   	password: string
@@ -56,3 +55,22 @@ export class VerifyRegistrationInputData{
 export class VerifyRegistrationInput implements Input<VerifyRegistrationInputData> {
     data: VerifyRegistrationInputData
 }
+
+export class ResetPasswordInputData{
+    @ApiProperty()
+        token : string
+}
+
+export class ResetPasswordInput implements Input<ResetPasswordInputData> {
+    data: ResetPasswordInputData
+}
+
+export class ForgotPasswordInputData {
+    @ApiProperty()
+        email: string
+}
+
+export class ForgotPasswordInput implements Input<ForgotPasswordInputData> {
+    data: ForgotPasswordInputData
+}
+
